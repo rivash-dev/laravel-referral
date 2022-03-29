@@ -20,10 +20,29 @@ class AddReferralToUsersTable extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->string('referred_by')->nullable()->index();
-            $table->string('affiliate_id')->unique();
-        });
+        DB::beginTransaction();
+        try {
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('referred_by')->nullable()->index();
+                $table->string('affiliate_id')->nullable()->unique();
+            });
+
+            /** @var \Illuminate\Database\Eloquent\Collection|UserReferral[] $users */
+            $users = config('referral.user_model')::all();
+            foreach ($users as $user) {
+                $user->affiliate_id = $user::generateReferral();
+                $user->save();
+            }
+
+            Schema::table('users', function (Blueprint $table) {
+                $table->string('affiliate_id')->nullable(false)->change();
+            });
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
     }
 
     /**
