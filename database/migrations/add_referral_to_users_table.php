@@ -62,4 +62,4 @@ return new class extends Migration
             $table->dropColumn('affiliate_id');
         });
     }
-}
+};
