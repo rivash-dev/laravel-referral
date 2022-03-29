@@ -24,8 +24,8 @@ return new class extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('referred_by')->nullable()->index();
-            $table->string('affiliate_id')->nullable()->unique();
+            $table->string('referred_by')->nullable()->index()->affter('remember_token');
+            $table->string('affiliate_id')->nullable()->unique()->affter('referred_by');;
         });
 
         // User Models
