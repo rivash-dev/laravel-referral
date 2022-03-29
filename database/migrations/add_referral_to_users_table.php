@@ -12,6 +12,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -22,29 +23,31 @@ return new class extends Migration
      */
     public function up()
     {
-        DB::beginTransaction();
-        try {
-            Schema::table('users', function (Blueprint $table) {
-                $table->string('referred_by')->nullable()->index();
-                $table->string('affiliate_id')->nullable()->unique();
-            });
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('referred_by')->nullable()->index();
+            $table->string('affiliate_id')->nullable()->unique();
+        });
 
-            /** @var \Illuminate\Database\Eloquent\Collection|UserReferral[] $users */
-            $users = config('referral.user_model')::all();
-            foreach ($users as $user) {
-                $user->affiliate_id = $user::generateReferral();
-                $user->save();
+        // User Models
+        config('referral.user_model')::chunkById(200, function ($users) {
+            try {
+                DB::beginTransaction();
+
+                foreach ($users as $user) {
+                    $user->affiliate_id = $user::generateReferral();
+                    $user->save();
+                }
+
+                DB::commit();
+            } catch (\Exception $e) {
+                //handle your error (log ...)
+                DB::rollBack();
             }
+        });
 
-            Schema::table('users', function (Blueprint $table) {
-                $table->string('affiliate_id')->nullable(false)->change();
-            });
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            throw $e;
-        }
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('affiliate_id')->nullable(false)->change();
+        });
     }
 
     /**
